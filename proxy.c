@@ -15,32 +15,18 @@
 #define MAXHOSTLEN 64               // Taille d'un nom de machine
 #define MAXPORTLEN 64               // Taille d'un numéro de port
 
-void splitString(const char* input, char* user, char* adresse_serveur) {
-    char* delimiter = strchr(input, '@'); // Recherche du caractère '@' dans la chaîne
-    if (delimiter != NULL) {
-        // Copie de la partie avant le '@' dans la variable user
-        strncpy(user, input, delimiter - input);
-        user[delimiter - input] = '\0'; // Ajout du caractère de fin de chaîne
 
-        // Copie de la partie après le '@' dans la variable adresse_serveur
-        strcpy(adresse_serveur, delimiter + 1);
-    }
-}
 
 int main(){
     char user[80];
     char adresse_serveur[80];
     char input[80];
-    scanf( "%s[^\n]", input );
-    splitString(input,user,adresse_serveur);
-    printf("INPUT : %s \n",input);
-    printf("USER : %s \n",user);
-    printf("ADRESSE SERV : %s \n",adresse_serveur);
     int ecode;                       // Code retour des fonctions
     char serverAddr[MAXHOSTLEN];     // Adresse du serveur
     char serverPort[MAXPORTLEN];     // Port du server
     int descSockRDV;                 // Descripteur de socket de rendez-vous
     int descSockCOM;                 // Descripteur de socket de communication
+    int descSockCOMFTP;
     struct addrinfo hints;           // Contrôle la fonction getaddrinfo
     struct addrinfo *res;            // Contient le résultat de la fonction getaddrinfo
     struct sockaddr_storage myinfo;  // Informations sur la connexion de RDV
@@ -107,7 +93,14 @@ int main(){
 
 	len = sizeof(struct sockaddr_storage);
      // Attente connexion du client
-     
+     printf("je suis la");
+    sscanf(buffer,"%48[^@]@%48s", user, adresse_serveur);
+    ecode=connect2Server(adresse_serveur,"21",&descSockCOMFTP);
+    if(ecode==-1){
+        perror("Erreur de connexion");
+        exit(6);
+    }
+    printf("OK");
      // Lorsque demande de connexion, creation d'une socket de communication avec le client
      descSockCOM = accept(descSockRDV, (struct sockaddr *) &from, &len);
      if (descSockCOM == -1){
@@ -121,7 +114,7 @@ int main(){
      * **/
     strcpy(buffer, "220 BLABLABLA\n");
     write(descSockCOM, buffer, strlen(buffer));
-   
+    
    
     /*******
      * 

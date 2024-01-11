@@ -107,6 +107,7 @@ int main(){
 
 	len = sizeof(struct sockaddr_storage);
      // Attente connexion du client
+     
      // Lorsque demande de connexion, creation d'une socket de communication avec le client
      descSockCOM = accept(descSockRDV, (struct sockaddr *) &from, &len);
      if (descSockCOM == -1){
@@ -118,7 +119,7 @@ int main(){
     /*****
      * Testez de mettre 220 devant BLABLABLA ...
      * **/
-    strcpy(buffer, "BLABLABLA\n");
+    strcpy(buffer, "220 BLABLABLA\n");
     write(descSockCOM, buffer, strlen(buffer));
    
    

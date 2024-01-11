@@ -18,9 +18,6 @@
 
 
 int main(){
-    char user[80];
-    char adresse_serveur[80];
-    char input[80];
     int ecode;                       // Code retour des fonctions
     char serverAddr[MAXHOSTLEN];     // Adresse du serveur
     char serverPort[MAXPORTLEN];     // Port du server
@@ -92,15 +89,8 @@ int main(){
      }
 
 	len = sizeof(struct sockaddr_storage);
-     // Attente connexion du client
-     printf("je suis la");
-    sscanf(buffer,"%48[^@]@%48s", user, adresse_serveur);
-    ecode=connect2Server(adresse_serveur,"21",&descSockCOMFTP);
-    if(ecode==-1){
-        perror("Erreur de connexion");
-        exit(6);
-    }
-    printf("OK");
+
+   
      // Lorsque demande de connexion, creation d'une socket de communication avec le client
      descSockCOM = accept(descSockRDV, (struct sockaddr *) &from, &len);
      if (descSockCOM == -1){
@@ -114,6 +104,44 @@ int main(){
      * **/
     strcpy(buffer, "220 BLABLABLA\n");
     write(descSockCOM, buffer, strlen(buffer));
+    ecode=read(descSockCOM,buffer,MAXBUFFERLEN-1);
+
+    buffer[ecode]='\0';
+    printf("C->P :%s\n",buffer);
+
+    char user[50];
+    char adresse_serveur[50];
+
+    memset(user,0,sizeof(user));
+    memset(adresse_serveur,0,sizeof(adresse_serveur));
+    strcpy(buffer, "220 BLABLABLA\n");
+write(descSockCOM, buffer, strlen(buffer));
+ecode = read(descSockCOM, buffer, MAXBUFFERLEN-1);
+
+buffer[ecode] = '\0';
+printf("C->P: %s\n", buffer);
+
+char user[50];
+char adresse_serveur[50];
+
+memset(user, 0, sizeof(user));
+memset(adresse_serveur, 0, sizeof(adresse_serveur));
+
+// Vérifiez le contenu de buffer avant d'appliquer sscanf
+printf("Contenu de buffer : %s\n", buffer);
+
+// Continuez le reste de votre code...
+
+    //anonymous@ftp.fau.de
+    sscanf(buffer,"%48[^@]@%48s", user, adresse_serveur);
+    sprintf(buffer,"%s\n",user);
+    ecode=connect2Server(adresse_serveur,"21",&descSockCOMFTP);
+    printf("%d",ecode);
+    if(ecode==-1){
+        perror("Erreur de connexion");
+        exit(6);
+    }
+    printf("OK");
     
    
     /*******

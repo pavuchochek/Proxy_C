@@ -15,6 +15,17 @@
 #define MAXHOSTLEN 64               // Taille d'un nom de machine
 #define MAXPORTLEN 64               // Taille d'un numéro de port
 
+void splitString(const char* input, char* user, char* adresse_serveur) {
+    char* delimiter = strchr(input, '@'); // Recherche du caractère '@' dans la chaîne
+    if (delimiter != NULL) {
+        // Copie de la partie avant le '@' dans la variable user
+        strncpy(user, input, delimiter - input);
+        user[delimiter - input] = '\0'; // Ajout du caractère de fin de chaîne
+
+        // Copie de la partie après le '@' dans la variable adresse_serveur
+        strcpy(adresse_serveur, delimiter + 1);
+    }
+}
 
 int main(){
     int ecode;                       // Code retour des fonctions
@@ -29,6 +40,7 @@ int main(){
     socklen_t len;                   // Variable utilisée pour stocker les 
 				                     // longueurs des structures de socket
     char buffer[MAXBUFFERLEN];       // Tampon de communication entre le client et le serveur
+    
     
     // Initialisation de la socket de RDV IPv4/TCP
     descSockRDV = socket(AF_INET, SOCK_STREAM, 0);

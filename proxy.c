@@ -114,34 +114,16 @@ int main(){
 
     memset(user,0,sizeof(user));
     memset(adresse_serveur,0,sizeof(adresse_serveur));
-    strcpy(buffer, "220 BLABLABLA\n");
-write(descSockCOM, buffer, strlen(buffer));
-ecode = read(descSockCOM, buffer, MAXBUFFERLEN-1);
-
-buffer[ecode] = '\0';
-printf("C->P: %s\n", buffer);
-
-char user[50];
-char adresse_serveur[50];
-
-memset(user, 0, sizeof(user));
-memset(adresse_serveur, 0, sizeof(adresse_serveur));
-
-// Vérifiez le contenu de buffer avant d'appliquer sscanf
-printf("Contenu de buffer : %s\n", buffer);
-
-// Continuez le reste de votre code...
 
     //anonymous@ftp.fau.de
     sscanf(buffer,"%48[^@]@%48s", user, adresse_serveur);
-    sprintf(buffer,"%s\n",user);
+    sprintf(buffer,"%s\n",adresse_serveur);
     ecode=connect2Server(adresse_serveur,"21",&descSockCOMFTP);
-    printf("%d",ecode);
     if(ecode==-1){
         perror("Erreur de connexion");
         exit(6);
     }
-    printf("OK");
+    printf("CONNEXION REUSSIE");
     
    
     /*******

@@ -29,11 +29,14 @@ int main(int argc, char* argv[]){
     serverName[MAXHOSTLEN-1] = '\0';
     strncpy(serverPort, argv[2], MAXPORTLEN);
     serverPort[MAXPORTLEN-1] = '\0';
+
+
     
     // Initailisation de hints
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_socktype = SOCK_STREAM;  // TCP
-	hints.ai_family = AF_UNSPEC;      // les adresses IPv4 et IPv6 seront présentées par la fonction getaddrinfo
+	hints.ai_family = AF_UNSPEC;      // les adresses IPv4 et IPv6 seront présentées par 
+				                          // la fonction getaddrinfo
 
 	//Récupération des informations sur le serveur
 	ecode = getaddrinfo(serverName,serverPort,&hints,&res);
@@ -67,13 +70,12 @@ int main(int argc, char* argv[]){
 		perror("Connexion impossible");
 		exit(2);
 	}
-
-	//Echange de données avec le serveur
+	//Echange de donneés avec le serveur
 	ecode = read(descSock, buffer, MAXBUFFERLEN);
 	if (ecode == -1) {perror("Problème de lecture\n"); exit(3);}
 	buffer[ecode] = '\0';
 	printf("MESSAGE RECU DU SERVEUR: \"%s\".\n",buffer);
-
 	//Fermeture de la socket
 	close(descSock);
 }
+

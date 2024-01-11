@@ -28,14 +28,14 @@ void splitString(const char* input, char* user, char* adresse_serveur) {
 }
 
 int main(){
-    char user;
-    char adresse_serveur;
+    char user[80];
+    char adresse_serveur[80];
     char input[80];
-    scanf( "%[^\n]", input );
-    splitString(&input,&user,&adresse_serveur);
+    scanf( "%s[^\n]", input );
+    splitString(input,user,adresse_serveur);
     printf("INPUT : %s \n",input);
-    printf("USER : %d \n",user);
-    printf("ADRESSE SERV : %d \n",adresse_serveur);
+    printf("USER : %s \n",user);
+    printf("ADRESSE SERV : %s \n",adresse_serveur);
     int ecode;                       // Code retour des fonctions
     char serverAddr[MAXHOSTLEN];     // Adresse du serveur
     char serverPort[MAXPORTLEN];     // Port du server

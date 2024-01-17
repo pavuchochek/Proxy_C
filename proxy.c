@@ -7,133 +7,211 @@
 #include  <stdbool.h>
 #include "./simpleSocketAPI.h"
 
+#define MY_ADDR "127.0.0.1"
+#define MY_PORT "0"
+#define BACKLOG_LEN 1
+#define MAX_BUFFER_LEN 1024
+#define MAX_HOST_LEN 64
+#define MAX_PORT_LEN 64
+#define FTP_PORT "21"
 
-#define SERVADDR "127.0.0.1"        // Définition de l'adresse IP d'écoute
-#define SERVPORT "0"                // Définition du port d'écoute, si 0 port choisi dynamiquement
-#define LISTENLEN 1                 // Taille de la file des demandes de connexion
-#define MAXBUFFERLEN 1024           // Taille du tampon pour les échanges de données
-#define MAXHOSTLEN 64               // Taille d'un nom de machine
-#define MAXPORTLEN 64               // Taille d'un numéro de port
+void printMemory(const void *ptr, size_t size);
+void readClient(int* status, int socketDesc, char* buffer);
+void writeClient(int socketDesc, char* buffer);
+void readServer(int* status, int socketDesc, char* buffer);
+void writeServer(int socketDesc, char* buffer);
 
+int main() {
+    int h1, h2, h3, h4, p1, p2, port;
+    char serverCommAddr[MAX_HOST_LEN];
+    char serverCommPort[MAX_PORT_LEN];
+    int status;
+    char serverAddr[MAX_HOST_LEN];
+    char serverPort[MAX_PORT_LEN];
+    int rdvSocketDesc;
+    int comSocketDesc;
+    int ftpCtrlSocketDesc;
+    int ftpDataSocketDesc;
+    int clientDataSocketDesc;
+    struct addrinfo hints;
+    struct addrinfo *result;
+    struct sockaddr_storage myinfo;
+    struct sockaddr_storage clientAddr;
+    socklen_t addrLen;
+    char buffer[MAX_BUFFER_LEN];
 
-
-int main(){
-    int ecode;                       // Code retour des fonctions
-    char serverAddr[MAXHOSTLEN];     // Adresse du serveur
-    char serverPort[MAXPORTLEN];     // Port du server
-    int descSockRDV;                 // Descripteur de socket de rendez-vous
-    int descSockCOM;                 // Descripteur de socket de communication
-    int descSockCOMFTP;
-    struct addrinfo hints;           // Contrôle la fonction getaddrinfo
-    struct addrinfo *res;            // Contient le résultat de la fonction getaddrinfo
-    struct sockaddr_storage myinfo;  // Informations sur la connexion de RDV
-    struct sockaddr_storage from;    // Informations sur le client connecté
-    socklen_t len;                   // Variable utilisée pour stocker les 
-				                     // longueurs des structures de socket
-    char buffer[MAXBUFFERLEN];       // Tampon de communication entre le client et le serveur
-    
-    
     // Initialisation de la socket de RDV IPv4/TCP
-    descSockRDV = socket(AF_INET, SOCK_STREAM, 0);
-    if (descSockRDV == -1) {
-         perror("Erreur création socket RDV\n");
-         exit(2);
+    rdvSocketDesc = socket(AF_INET, SOCK_STREAM, 0);
+    if (rdvSocketDesc == -1) {
+        perror("Erreur création socket RDV\n");
+        exit(2);
     }
+
     // Publication de la socket au niveau du système
     // Assignation d'une adresse IP et un numéro de port
-    // Mise à zéro de hints
     memset(&hints, 0, sizeof(hints));
-    // Initialisation de hints
-    hints.ai_flags = AI_PASSIVE;      // mode serveur, nous allons utiliser la fonction bind
-    hints.ai_socktype = SOCK_STREAM;  // TCP
-    hints.ai_family = AF_INET;        // seules les adresses IPv4 seront présentées par 
-				                      // la fonction getaddrinfo
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = AF_INET;
 
-     // Récupération des informations du serveur
-     ecode = getaddrinfo(SERVADDR, SERVPORT, &hints, &res);
-     if (ecode) {
-         fprintf(stderr,"getaddrinfo: %s\n", gai_strerror(ecode));
-         exit(1);
-     }
-     // Publication de la socket
-     ecode = bind(descSockRDV, res->ai_addr, res->ai_addrlen);
-     if (ecode == -1) {
-         perror("Erreur liaison de la socket de RDV");
-         exit(3);
-     }
-     // Nous n'avons plus besoin de cette liste chainée addrinfo
-     freeaddrinfo(res);
-
-     // Récuppération du nom de la machine et du numéro de port pour affichage à l'écran
-     len=sizeof(struct sockaddr_storage);
-     ecode=getsockname(descSockRDV, (struct sockaddr *) &myinfo, &len);
-     if (ecode == -1)
-     {
-         perror("SERVEUR: getsockname");
-         exit(4);
-     }
-     ecode = getnameinfo((struct sockaddr*)&myinfo, sizeof(myinfo), serverAddr,MAXHOSTLEN, 
-                         serverPort, MAXPORTLEN, NI_NUMERICHOST | NI_NUMERICSERV);
-     if (ecode != 0) {
-             fprintf(stderr, "error in getnameinfo: %s\n", gai_strerror(ecode));
-             exit(4);
-     }
-     printf("L'adresse d'ecoute est: %s\n", serverAddr);
-     printf("Le port d'ecoute est: %s\n", serverPort);
-
-     // Definition de la taille du tampon contenant les demandes de connexion
-     ecode = listen(descSockRDV, LISTENLEN);
-     if (ecode == -1) {
-         perror("Erreur initialisation buffer d'écoute");
-         exit(5);
-     }
-
-	len = sizeof(struct sockaddr_storage);
-
-   
-     // Lorsque demande de connexion, creation d'une socket de communication avec le client
-     descSockCOM = accept(descSockRDV, (struct sockaddr *) &from, &len);
-     if (descSockCOM == -1){
-         perror("Erreur accept\n");
-         exit(6);
-     }
-    // Echange de données avec le client connecté
-
-    /*****
-     * Testez de mettre 220 devant BLABLABLA ...
-     * **/
-    strcpy(buffer, "220 BLABLABLA\n");
-    write(descSockCOM, buffer, strlen(buffer));
-    ecode=read(descSockCOM,buffer,MAXBUFFERLEN-1);
-
-    buffer[ecode]='\0';
-    printf("C->P :%s\n",buffer);
-
-    char user[50];
-    char adresse_serveur[50];
-
-    memset(user,0,sizeof(user));
-    memset(adresse_serveur,0,sizeof(adresse_serveur));
-
-    //anonymous@ftp.fau.de
-    sscanf(buffer,"%48[^@]@%48s", user, adresse_serveur);
-    sprintf(buffer,"%s\n",adresse_serveur);
-    ecode=connect2Server(adresse_serveur,"21",&descSockCOMFTP);
-    if(ecode==-1){
-        perror("Erreur de connexion");
-        exit(6);
+    // Récupération des informations du serveur
+    status = getaddrinfo(MY_ADDR, MY_PORT, &hints, &result);
+    if (status) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        exit(1);
     }
-    printf("CONNEXION REUSSIE");
-    
-   
-    /*******
-     * 
-     * A vous de continuer !
-     * 
-     * *****/
 
-    //Fermeture de la connexion
-    close(descSockCOM);
-    close(descSockRDV);
+    // Publication de la socket
+    status = bind(rdvSocketDesc, result->ai_addr, result->ai_addrlen);
+    if (status == -1) {
+        perror("Erreur liaison de la socket de RDV");
+        exit(3);
+    }
+    freeaddrinfo(result);
+
+    // Récupération du nom de la machine et du numéro de port pour affichage à l'écran
+    addrLen = sizeof(struct sockaddr_storage);
+    status = getsockname(rdvSocketDesc, (struct sockaddr *) &myinfo, &addrLen);
+    if (status == -1) {
+        perror("SERVEUR: getsockname");
+        exit(4);
+    }
+    status = getnameinfo((struct sockaddr*)&myinfo, sizeof(myinfo), serverAddr, MAX_HOST_LEN,
+                         serverPort, MAX_PORT_LEN, NI_NUMERICHOST | NI_NUMERICSERV);
+    if (status != 0) {
+        fprintf(stderr, "error in getnameinfo: %s\n", gai_strerror(status));
+        exit(4);
+    }
+
+    printf("L'adresse d'écoute est: %s\n", serverAddr);
+    printf("Le port d'écoute est: %s\n", serverPort);
+
+    // Definition de la taille du tampon contenant les demandes de connexion
+    status = listen(rdvSocketDesc, BACKLOG_LEN);
+    if (status == -1) {
+        perror("Erreur initialisation buffer d'écoute");
+        exit(5);
+    }
+
+    addrLen = sizeof(struct sockaddr_storage);
+    while (true) {
+        // Attente connexion du client
+        // Lorsque demande de connexion, creation d'une socket de communication avec le client
+        comSocketDesc = accept(rdvSocketDesc, (struct sockaddr *) &clientAddr, &addrLen);
+        if (comSocketDesc == -1) {
+            perror("Erreur accept\n");
+            exit(6);
+        }
+
+        // Echange de données avec le client connecté
+        strcpy(buffer, "220 Connecté au proxy, entrez votre username@server\n");
+        writeClient(comSocketDesc, buffer);
+
+        //Lecture de l'identifiant et du serveur
+        readClient(&status, comSocketDesc, buffer);
+
+        //Décomposition
+        char login[50], ftpServerName[50];
+        memset(login, '\0', sizeof(login));
+        memset(ftpServerName, '\0', sizeof(ftpServerName));
+
+        sscanf(buffer, "%48[^@]@%48s", login, ftpServerName);
+        sprintf(login, "%s\n", login);
+
+        //Connexion au serveur ftp
+        status = connect2Server(ftpServerName, FTP_PORT, &ftpCtrlSocketDesc);
+        if (status == -1) {
+            perror("Pb connexion serveur ftp\n");
+            exit(6);
+        }
+
+        //Lecture de la réponse
+        readServer(&status, ftpCtrlSocketDesc, buffer);
+
+        //Envoi de l'indentifiant
+        writeServer(ftpCtrlSocketDesc, login);
+
+        //Lecture de la réponse
+        readServer(&status, ftpCtrlSocketDesc, buffer);
+
+        writeClient(comSocketDesc, buffer);
+
+        //Lecture du mdp
+        readClient(&status, comSocketDesc, buffer);
+
+        writeServer(ftpCtrlSocketDesc, buffer);
+
+        //Lecture de la réponse
+        readServer(&status, ftpCtrlSocketDesc, buffer);
+
+        writeClient(comSocketDesc, buffer);
+
+        //Lecture de la demande SYST
+        readClient(&status, comSocketDesc, buffer);
+
+        writeServer(ftpCtrlSocketDesc, buffer);
+
+        //Lecture de la réponse
+        readServer(&status, ftpCtrlSocketDesc, buffer);
+        writeClient(comSocketDesc, buffer);
+
+        //Lecture des demandes
+        for (readClient(&status, comSocketDesc, buffer);; readClient(&status, comSocketDesc, buffer)) {
+            if (strncmp(buffer, "QUIT", 4) == 0) {
+                break;
+            }
+            // Ajoutez ici d'autres conditions pour les commandes FTP
+
+            writeServer(ftpCtrlSocketDesc, buffer);
+            readServer(&status, ftpCtrlSocketDesc, buffer);
+            writeClient(comSocketDesc, buffer);
+        }
+
+        //Fermeture de la connexion
+        close(ftpCtrlSocketDesc);
+        close(comSocketDesc);
+    }
+
+    close(rdvSocketDesc);
+    return 0;
 }
 
+void readClient(int* status, int socketDesc, char* buffer) {
+    *status = read(socketDesc, buffer, MAX_BUFFER_LEN - 1);
+    if (*status == -1) {
+        perror("Problème de lecture\n");
+        exit(3);
+    }
+    buffer[*status] = '\0';
+    printf("<--C %s", buffer);
+}
+
+void readServer(int* status, int socketDesc, char* buffer) {
+    *status = read(socketDesc, buffer, MAX_BUFFER_LEN - 1);
+    if (*status == -1) {
+        perror("Problème de lecture\n");
+        exit(3);
+    }
+    buffer[*status] = '\0';
+    printf("<--S %s", buffer);
+}
+
+void writeClient(int socketDesc, char* buffer) {
+    write(socketDesc, buffer, strlen(buffer));
+    printf("-->C %s", buffer);
+}
+
+void writeServer(int socketDesc, char* buffer) {
+    write(socketDesc, buffer, strlen(buffer));
+    printf("-->S %s", buffer);
+}
+
+void printMemory(const void *ptr, size_t size) {
+    const unsigned char *byte = ptr;
+
+    for (size_t i = 0; i < size; i++) {
+        printf("%02X ", byte[i]);
+    }
+
+    printf("\n");
+}

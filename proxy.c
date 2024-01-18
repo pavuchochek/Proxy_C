@@ -94,98 +94,107 @@ int main() {
     }
 
     addrLen = sizeof(struct sockaddr_storage);
-   while (true) {
-        // Attente connexion du client
-        // Lorsque demande de connexion, creation d'une socket de communication avec le client
+    while (true) {
+        // Attente de la connexion du client
         comSocketDesc = accept(rdvSocketDesc, (struct sockaddr *) &clientAddr, &addrLen);
         if (comSocketDesc == -1) {
             perror("Erreur lors de l'acceptation de la connexion du client");
             exit(6);
         }
 
-        // Echange de données avec le client connecté
+        // Envoi du message d'accueil au client
         if (writeClient(comSocketDesc, "220 Connecté au proxy, entrez votre username@server\n") == -1) {
             perror("Erreur lors de l'envoi du message au client");
             exit(6);
         }
 
-        //Lecture de l'identifiant et du serveur
+        // Lecture de l'identifiant et du serveur
         readClient(&status, comSocketDesc, buffer);
 
-        //Décomposition
+        // Décomposition de l'identifiant et du serveur
         char login[50], ftpServerName[50];
         memset(login, '\0', sizeof(login));
         memset(ftpServerName, '\0', sizeof(ftpServerName));
-
         sscanf(buffer, "%48[^@]@%48s", login, ftpServerName);
         sprintf(login, "%s\n", login);
 
-        //Connexion au serveur ftp
+        // Connexion au serveur ftp
         if (connect2Server(ftpServerName, FTP_PORT, &ftpCtrlSocketDesc) == -1) {
             perror("Erreur lors de la connexion au serveur FTP");
             exit(6);
         }
 
-        //Lecture de la réponse
+        // Lecture de la réponse du serveur ftp
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
-        //Envoi de l'indentifiant
+        // Envoi de l'identifiant au serveur ftp
         writeServer(ftpCtrlSocketDesc, login);
 
-        //Lecture de la réponse
+        // Lecture de la réponse du serveur ftp
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
+        // Envoi de la réponse du serveur ftp au client
         if (writeClient(comSocketDesc, buffer) == -1) {
             perror("Erreur lors de l'envoi de la réponse au client");
             exit(6);
         }
 
-        //Lecture du mdp
+        // Lecture du mot de passe du client
         readClient(&status, comSocketDesc, buffer);
 
+        // Envoi du mot de passe au serveur ftp
         writeServer(ftpCtrlSocketDesc, buffer);
 
-        //Lecture de la réponse
+        // Lecture de la réponse du serveur ftp
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
+        // Envoi de la réponse du serveur ftp au client
         if (writeClient(comSocketDesc, buffer) == -1) {
             perror("Erreur lors de l'envoi de la réponse au client");
             exit(6);
         }
 
-        //Lecture de la demande SYST
+        // Lecture de la demande SYST du client
         readClient(&status, comSocketDesc, buffer);
 
+        // Envoi de la demande SYST au serveur ftp
         writeServer(ftpCtrlSocketDesc, buffer);
 
-        //Lecture de la réponse
+        // Lecture de la réponse du serveur ftp
         readServer(&status, ftpCtrlSocketDesc, buffer);
         
+        // Envoi de la réponse du serveur ftp au client
         if (writeClient(comSocketDesc, buffer) == -1) {
             perror("Erreur lors de l'envoi de la réponse au client");
             exit(6);
         }
 
-        //Lecture des demandes
+        // Lecture des demandes du client
         for (readClient(&status, comSocketDesc, buffer);; readClient(&status, comSocketDesc, buffer)) {
+            // Si la demande est QUIT, sortir de la boucle
             if (strncmp(buffer, "QUIT", 4) == 0) {
                 break;
             }
 
+            // Envoyer la demande du client au serveur ftp
             writeServer(ftpCtrlSocketDesc, buffer);
+
+            // Lire la réponse du serveur ftp
             readServer(&status, ftpCtrlSocketDesc, buffer);
             
+            // Envoyer la réponse du serveur ftp au client
             if (writeClient(comSocketDesc, buffer) == -1) {
                 perror("Erreur lors de l'envoi de la réponse au client");
                 exit(6);
             }
         }
 
-        //Fermeture de la connexion
+        // Fermeture de la connexion avec le serveur ftp et le client
         close(ftpCtrlSocketDesc);
         close(comSocketDesc);
     }
 
+    // Fermeture de la socket de rendez-vous
     close(rdvSocketDesc);
     return 0;
 }

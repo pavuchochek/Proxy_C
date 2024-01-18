@@ -1,10 +1,10 @@
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <sys/socket.h>
-#include  <netdb.h>
-#include  <string.h>
-#include  <unistd.h>
-#include  <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
 #include "./simpleSocketAPI.h"
 
 #define MY_ADDR "127.0.0.1"
@@ -16,39 +16,73 @@
 #define FTP_PORT "21"
 
 void printMemory(const void *ptr, size_t size);
-void readClient(int* status, int socketDesc, char* buffer);
-void writeClient(int socketDesc, char* buffer);
-void readServer(int* status, int socketDesc, char* buffer);
-void writeServer(int socketDesc, char* buffer);
+void readClient(int *status, int socketDesc, char *buffer);
+void writeClient(int socketDesc, char *buffer);
+void readServer(int *status, int socketDesc, char *buffer);
+void writeServer(int socketDesc, char *buffer);
 
 int main() {
-    int h1, h2, h3, h4, p1, p2, port;
-    char serverCommAddr[MAX_HOST_LEN];
-    char serverCommPort[MAX_PORT_LEN];
+    int hostPart1, hostPart2, hostPart3, hostPart4, portDigit1, portDigit2, port;
+    // Les parties de l'adresse IP et le numéro de port pour une connexion FTP
+
+    char clientCommAddr[MAX_HOST_LEN];
+    // Adresse client pour la communication
+
+    char clientCommPort[MAX_PORT_LEN];
+    // Numéro de port client pour la communication
+
     int status;
+    // Variable pour stocker le statut des opérations (retours de fonction, etc.)
+
     char serverAddr[MAX_HOST_LEN];
+    // Adresse IP du serveur
+
     char serverPort[MAX_PORT_LEN];
-    int rdvSocketDesc;
-    int comSocketDesc;
+    // Numéro de port du serveur
+
+    int rendezvousSocketDesc;
+    // Descripteur de socket pour la socket de rendez-vous
+
+    int communicationSocketDesc;
+    // Descripteur de socket pour la communication avec le client
+
     int ftpCtrlSocketDesc;
+    // Descripteur de socket pour le contrôle FTP
+
     int ftpDataSocketDesc;
+    // Descripteur de socket pour les données FTP
+
     int clientDataSocketDesc;
+    // Descripteur de socket pour les données du client
+
     struct addrinfo hints;
+    // Structure pour spécifier des critères lors de la recherche d'informations sur l'adresse
+
     struct addrinfo *result;
+    // Pointeur vers la liste des résultats obtenus après la recherche d'informations sur l'adresse
+
     struct sockaddr_storage myinfo;
+    // Structure pour stocker des informations sur la socket locale
+
     struct sockaddr_storage clientAddr;
+    // Structure pour stocker des informations sur la socket du client
+
     socklen_t addrLen;
+    // Type pour stocker la longueur des adresses utilisées dans les appels système de socket
+
     char buffer[MAX_BUFFER_LEN];
+    // Tampon pour stocker les données à lire ou à écrire
+
 
     // Initialisation de la socket de RDV IPv4/TCP
-    rdvSocketDesc = socket(AF_INET, SOCK_STREAM, 0);
-    if (rdvSocketDesc == -1) {
+    rendezvousSocketDesc = socket(AF_INET, SOCK_STREAM, 0);
+    if (rendezvousSocketDesc == -1) {
         perror("Erreur création socket RDV\n");
         exit(2);
     }
 
     // Publication de la socket au niveau du système
-    // Assignation d'une adresse IP et un numéro de port
+    // Assignation d'une adresse IP et d'un numéro de port
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags = AI_PASSIVE;
     hints.ai_socktype = SOCK_STREAM;
@@ -62,7 +96,7 @@ int main() {
     }
 
     // Publication de la socket
-    status = bind(rdvSocketDesc, result->ai_addr, result->ai_addrlen);
+    status = bind(rendezvousSocketDesc, result->ai_addr, result->ai_addrlen);
     if (status == -1) {
         perror("Erreur liaison de la socket de RDV");
         exit(3);
@@ -71,12 +105,12 @@ int main() {
 
     // Récupération du nom de la machine et du numéro de port pour affichage à l'écran
     addrLen = sizeof(struct sockaddr_storage);
-    status = getsockname(rdvSocketDesc, (struct sockaddr *) &myinfo, &addrLen);
+    status = getsockname(rendezvousSocketDesc, (struct sockaddr *)&myinfo, &addrLen);
     if (status == -1) {
         perror("SERVEUR: getsockname");
         exit(4);
     }
-    status = getnameinfo((struct sockaddr*)&myinfo, sizeof(myinfo), serverAddr, MAX_HOST_LEN,
+    status = getnameinfo((struct sockaddr *)&myinfo, sizeof(myinfo), serverAddr, MAX_HOST_LEN,
                          serverPort, MAX_PORT_LEN, NI_NUMERICHOST | NI_NUMERICSERV);
     if (status != 0) {
         fprintf(stderr, "error in getnameinfo: %s\n", gai_strerror(status));
@@ -86,8 +120,8 @@ int main() {
     printf("L'adresse d'écoute est: %s\n", serverAddr);
     printf("Le port d'écoute est: %s\n", serverPort);
 
-    // Definition de la taille du tampon contenant les demandes de connexion
-    status = listen(rdvSocketDesc, BACKLOG_LEN);
+    // Définition de la taille du tampon contenant les demandes de connexion
+    status = listen(rendezvousSocketDesc, BACKLOG_LEN);
     if (status == -1) {
         perror("Erreur initialisation buffer d'écoute");
         exit(5);
@@ -96,20 +130,20 @@ int main() {
     addrLen = sizeof(struct sockaddr_storage);
     while (true) {
         // Attente de la connexion du client
-        comSocketDesc = accept(rdvSocketDesc, (struct sockaddr *) &clientAddr, &addrLen);
-        if (comSocketDesc == -1) {
+        communicationSocketDesc = accept(rendezvousSocketDesc, (struct sockaddr *)&clientAddr, &addrLen);
+        if (communicationSocketDesc == -1) {
             perror("Erreur lors de l'acceptation de la connexion du client");
             exit(6);
         }
 
         // Envoi du message d'accueil au client
-        if (writeClient(comSocketDesc, "220 Connecté au proxy, entrez votre username@server\n") == -1) {
+        if (writeClient(communicationSocketDesc, "220 Connecté au proxy, entrez votre username@server\n") == -1) {
             perror("Erreur lors de l'envoi du message au client");
             exit(6);
         }
 
         // Lecture de l'identifiant et du serveur
-        readClient(&status, comSocketDesc, buffer);
+        readClient(&status, communicationSocketDesc, buffer);
 
         // Décomposition de l'identifiant et du serveur
         char login[50], ftpServerName[50];
@@ -134,13 +168,13 @@ int main() {
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
         // Envoi de la réponse du serveur ftp au client
-        if (writeClient(comSocketDesc, buffer) == -1) {
+        if (writeClient(communicationSocketDesc, buffer) == -1) {
             perror("Erreur lors de l'envoi de la réponse au client");
             exit(6);
         }
 
         // Lecture du mot de passe du client
-        readClient(&status, comSocketDesc, buffer);
+        readClient(&status, communicationSocketDesc, buffer);
 
         // Envoi du mot de passe au serveur ftp
         writeServer(ftpCtrlSocketDesc, buffer);
@@ -149,28 +183,28 @@ int main() {
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
         // Envoi de la réponse du serveur ftp au client
-        if (writeClient(comSocketDesc, buffer) == -1) {
+        if (writeClient(communicationSocketDesc, buffer) == -1) {
             perror("Erreur lors de l'envoi de la réponse au client");
             exit(6);
         }
 
         // Lecture de la demande SYST du client
-        readClient(&status, comSocketDesc, buffer);
+        readClient(&status, communicationSocketDesc, buffer);
 
         // Envoi de la demande SYST au serveur ftp
         writeServer(ftpCtrlSocketDesc, buffer);
 
         // Lecture de la réponse du serveur ftp
         readServer(&status, ftpCtrlSocketDesc, buffer);
-        
+
         // Envoi de la réponse du serveur ftp au client
-        if (writeClient(comSocketDesc, buffer) == -1) {
+        if (writeClient(communicationSocketDesc, buffer) == -1) {
             perror("Erreur lors de l'envoi de la réponse au client");
             exit(6);
         }
 
         // Lecture des demandes du client
-        for (readClient(&status, comSocketDesc, buffer);; readClient(&status, comSocketDesc, buffer)) {
+        for (readClient(&status, communicationSocketDesc, buffer);; readClient(&status, communicationSocketDesc, buffer)) {
             // Si la demande est QUIT, sortir de la boucle
             if (strncmp(buffer, "QUIT", 4) == 0) {
                 break;
@@ -183,7 +217,7 @@ int main() {
             readServer(&status, ftpCtrlSocketDesc, buffer);
             
             // Envoyer la réponse du serveur ftp au client
-            if (writeClient(comSocketDesc, buffer) == -1) {
+            if (writeClient(communicationSocketDesc, buffer) == -1) {
                 perror("Erreur lors de l'envoi de la réponse au client");
                 exit(6);
             }
@@ -191,15 +225,15 @@ int main() {
 
         // Fermeture de la connexion avec le serveur ftp et le client
         close(ftpCtrlSocketDesc);
-        close(comSocketDesc);
+        close(communicationSocketDesc);
     }
 
     // Fermeture de la socket de rendez-vous
-    close(rdvSocketDesc);
+    close(rendezvousSocketDesc);
     return 0;
 }
 
-void readClient(int* status, int socketDesc, char* buffer) {
+void readClient(int *status, int socketDesc, char *buffer) {
     *status = read(socketDesc, buffer, MAX_BUFFER_LEN - 1);
     if (*status == -1) {
         perror("Problème de lecture\n");
@@ -209,7 +243,7 @@ void readClient(int* status, int socketDesc, char* buffer) {
     printf("<--C %s", buffer);
 }
 
-void readServer(int* status, int socketDesc, char* buffer) {
+void readServer(int *status, int socketDesc, char *buffer) {
     *status = read(socketDesc, buffer, MAX_BUFFER_LEN - 1);
     if (*status == -1) {
         perror("Problème de lecture\n");
@@ -219,12 +253,12 @@ void readServer(int* status, int socketDesc, char* buffer) {
     printf("P<--S %s", buffer);
 }
 
-void writeClient(int socketDesc, char* buffer) {
+void writeClient(int socketDesc, char *buffer) {
     write(socketDesc, buffer, strlen(buffer));
     printf("P-->C %s", buffer);
 }
 
-void writeServer(int socketDesc, char* buffer) {
+void writeServer(int socketDesc, char *buffer) {
     write(socketDesc, buffer, strlen(buffer));
     printf("P-->S %s", buffer);
 }

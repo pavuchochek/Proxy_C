@@ -94,18 +94,20 @@ int main() {
     }
 
     addrLen = sizeof(struct sockaddr_storage);
-    while (true) {
+   while (true) {
         // Attente connexion du client
         // Lorsque demande de connexion, creation d'une socket de communication avec le client
         comSocketDesc = accept(rdvSocketDesc, (struct sockaddr *) &clientAddr, &addrLen);
         if (comSocketDesc == -1) {
-            perror("Erreur accept\n");
+            perror("Erreur lors de l'acceptation de la connexion du client");
             exit(6);
         }
 
         // Echange de données avec le client connecté
-        strcpy(buffer, "220 Connecté au proxy, entrez votre username@server\n");
-        writeClient(comSocketDesc, buffer);
+        if (writeClient(comSocketDesc, "220 Connecté au proxy, entrez votre username@server\n") == -1) {
+            perror("Erreur lors de l'envoi du message au client");
+            exit(6);
+        }
 
         //Lecture de l'identifiant et du serveur
         readClient(&status, comSocketDesc, buffer);
@@ -119,9 +121,8 @@ int main() {
         sprintf(login, "%s\n", login);
 
         //Connexion au serveur ftp
-        status = connect2Server(ftpServerName, FTP_PORT, &ftpCtrlSocketDesc);
-        if (status == -1) {
-            perror("Pb connexion serveur ftp\n");
+        if (connect2Server(ftpServerName, FTP_PORT, &ftpCtrlSocketDesc) == -1) {
+            perror("Erreur lors de la connexion au serveur FTP");
             exit(6);
         }
 
@@ -134,7 +135,10 @@ int main() {
         //Lecture de la réponse
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
-        writeClient(comSocketDesc, buffer);
+        if (writeClient(comSocketDesc, buffer) == -1) {
+            perror("Erreur lors de l'envoi de la réponse au client");
+            exit(6);
+        }
 
         //Lecture du mdp
         readClient(&status, comSocketDesc, buffer);
@@ -144,7 +148,10 @@ int main() {
         //Lecture de la réponse
         readServer(&status, ftpCtrlSocketDesc, buffer);
 
-        writeClient(comSocketDesc, buffer);
+        if (writeClient(comSocketDesc, buffer) == -1) {
+            perror("Erreur lors de l'envoi de la réponse au client");
+            exit(6);
+        }
 
         //Lecture de la demande SYST
         readClient(&status, comSocketDesc, buffer);
@@ -153,18 +160,25 @@ int main() {
 
         //Lecture de la réponse
         readServer(&status, ftpCtrlSocketDesc, buffer);
-        writeClient(comSocketDesc, buffer);
+        
+        if (writeClient(comSocketDesc, buffer) == -1) {
+            perror("Erreur lors de l'envoi de la réponse au client");
+            exit(6);
+        }
 
         //Lecture des demandes
         for (readClient(&status, comSocketDesc, buffer);; readClient(&status, comSocketDesc, buffer)) {
             if (strncmp(buffer, "QUIT", 4) == 0) {
                 break;
             }
-            // Ajoutez ici d'autres conditions pour les commandes FTP
 
             writeServer(ftpCtrlSocketDesc, buffer);
             readServer(&status, ftpCtrlSocketDesc, buffer);
-            writeClient(comSocketDesc, buffer);
+            
+            if (writeClient(comSocketDesc, buffer) == -1) {
+                perror("Erreur lors de l'envoi de la réponse au client");
+                exit(6);
+            }
         }
 
         //Fermeture de la connexion
@@ -193,17 +207,17 @@ void readServer(int* status, int socketDesc, char* buffer) {
         exit(3);
     }
     buffer[*status] = '\0';
-    printf("<--S %s", buffer);
+    printf("P<--S %s", buffer);
 }
 
 void writeClient(int socketDesc, char* buffer) {
     write(socketDesc, buffer, strlen(buffer));
-    printf("-->C %s", buffer);
+    printf("P-->C %s", buffer);
 }
 
 void writeServer(int socketDesc, char* buffer) {
     write(socketDesc, buffer, strlen(buffer));
-    printf("-->S %s", buffer);
+    printf("P-->S %s", buffer);
 }
 
 void printMemory(const void *ptr, size_t size) {
